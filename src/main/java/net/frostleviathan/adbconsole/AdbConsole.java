@@ -373,6 +373,11 @@ public class AdbConsole implements Console {
                     String.format("unauthorized device %s", device.deviceId()));
         }
 
+        if (!file.exists()) {
+            throw new AdbException(
+                    String.format("%s not exists", file.getAbsolutePath()));
+        }
+
         String command = String.format("adb -s %s install %s %s",
                 device.deviceId(), force ? "-r" : "", file.getAbsolutePath());
 
