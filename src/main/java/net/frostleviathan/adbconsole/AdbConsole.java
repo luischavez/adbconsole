@@ -373,8 +373,8 @@ public class AdbConsole implements Console {
                     String.format("unauthorized device %s", device.deviceId()));
         }
 
-        String command = String.format("adb -s %s install %s",
-                device.deviceId(), file.getAbsolutePath());
+        String command = String.format("adb -s %s install %s %s",
+                device.deviceId(), force ? "-r" : "", file.getAbsolutePath());
 
         StringBuilder builder = new StringBuilder();
         int code = execute(command, builder);
