@@ -26,6 +26,9 @@ import java.util.List;
 public class Main {
 
     public static void main(String... args) {
+        AdbInstaller installer = new AdbInstaller();
+        installer.detectOsAndInstallAdb(System.getProperty("user.dir"));
+        
         AdbConsole console = new AdbConsole("C:/Users/Frost/Downloads/apks/platform-tools/");
 
         console.setOutputStream(System.out);
