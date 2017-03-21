@@ -25,14 +25,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,20 +65,19 @@ public class AdbConsole implements Console {
     /**
      * Dispositivos conectados.
      */
-    private final List<Device> devices
-            = Collections.synchronizedList(new LinkedList<>());
+    private final List<Device> devices = new CopyOnWriteArrayList<>();
 
     /**
      * Hilos en espera.
      */
     private final Map<String, WaitForThread> waiting
-            = Collections.synchronizedMap(new HashMap<>());
+            = new ConcurrentHashMap<>();
 
     /**
      * Hilos de instalacion.
      */
     private final Map<String, InstallThread> installing
-            = Collections.synchronizedMap(new HashMap<>());
+            = new ConcurrentHashMap<>();
 
     /**
      * Construye la consola a partir de una cadena con la ubicacion de los
@@ -208,19 +206,17 @@ public class AdbConsole implements Console {
             });
         }
 
-        synchronized (waiting) {
-            Set<Map.Entry<String, WaitForThread>> entrySet = waiting.entrySet();
-            Iterator<Map.Entry<String, WaitForThread>> iterator
-                    = entrySet.iterator();
+        Set<Map.Entry<String, WaitForThread>> entrySet = waiting.entrySet();
+        Iterator<Map.Entry<String, WaitForThread>> iterator
+                = entrySet.iterator();
 
-            while (iterator.hasNext()) {
-                Map.Entry<String, WaitForThread> entry = iterator.next();
-                String deviceId = entry.getKey();
-                WaitForThread thread = entry.getValue();
+        while (iterator.hasNext()) {
+            Map.Entry<String, WaitForThread> entry = iterator.next();
+            String deviceId = entry.getKey();
+            WaitForThread thread = entry.getValue();
 
-                if (!thread.isAlive()) {
-                    waiting.remove(deviceId);
-                }
+            if (!thread.isAlive()) {
+                waiting.remove(deviceId);
             }
         }
 
@@ -282,13 +278,11 @@ public class AdbConsole implements Console {
     public List<Device> devices() throws AdbException {
         List<Device> connectedDevices = readDevices();
 
-        synchronized (devices) {
-            devices.clear();
+        devices.clear();
 
-            connectedDevices.forEach((device) -> {
-                devices.add(device);
-            });
-        }
+        connectedDevices.forEach((device) -> {
+            devices.add(device);
+        });
 
         return devices;
     }
@@ -301,12 +295,10 @@ public class AdbConsole implements Console {
                 .filter((d) -> d.deviceId().equals(device.deviceId()))
                 .findFirst();
 
-        synchronized (devices) {
-            devices.remove(device);
+        devices.remove(device);
 
-            if (optionalDevice.isPresent()) {
-                devices.add(optionalDevice.get());
-            }
+        if (optionalDevice.isPresent()) {
+            devices.add(optionalDevice.get());
         }
 
         listeners.forEach((listener) -> {
@@ -331,31 +323,25 @@ public class AdbConsole implements Console {
         WaitForThread thread
                 = new WaitForThread(this, device, process, callback);
 
-        synchronized (waiting) {
-            waiting.put(device.deviceId(), thread);
-        }
+        waiting.put(device.deviceId(), thread);
 
         thread.start();
     }
 
     @Override
     public void stopWait(Device device) throws AdbException {
-        synchronized (waiting) {
-            WaitForThread thread = waiting.get(device.deviceId());
+        WaitForThread thread = waiting.get(device.deviceId());
 
-            if (null != thread) {
-                thread.stopWait();
-            }
-
-            waiting.remove(device.deviceId());
+        if (null != thread) {
+            thread.stopWait();
         }
+
+        waiting.remove(device.deviceId());
     }
 
     @Override
     public boolean isWaiting(Device device) throws AdbException {
-        synchronized (waiting) {
-            return waiting.containsKey(device.deviceId());
-        }
+        return waiting.containsKey(device.deviceId());
     }
 
     @Override
@@ -393,9 +379,7 @@ public class AdbConsole implements Console {
         InstallThread thread
                 = new InstallThread(this, device, baseCommand, files, callback);
 
-        synchronized (installing) {
-            installing.put(device.deviceId(), thread);
-        }
+        installing.put(device.deviceId(), thread);
 
         thread.start();
 
@@ -403,22 +387,18 @@ public class AdbConsole implements Console {
 
     @Override
     public void cancel(Device device) throws AdbException {
-        synchronized (installing) {
-            InstallThread thread = installing.get(device.deviceId());
+        InstallThread thread = installing.get(device.deviceId());
 
-            if (null != thread) {
-                thread.stopInstall();
-            }
-
-            installing.remove(device.deviceId());
+        if (null != thread) {
+            thread.stopInstall();
         }
+
+        installing.remove(device.deviceId());
     }
 
     @Override
     public boolean isInstalling(Device device) throws AdbException {
-        synchronized (installing) {
-            return installing.containsKey(device.deviceId());
-        }
+        return installing.containsKey(device.deviceId());
     }
 
     @Override
