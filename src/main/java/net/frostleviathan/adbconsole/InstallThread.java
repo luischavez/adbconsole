@@ -16,12 +16,14 @@
  */
 package net.frostleviathan.adbconsole;
 
+import java.io.File;
+
 /**
- * Hilo que espera por el dispositivo.
+ * Hilo que realiza la instalacion de archivos en el dispositivo.
  *
  * @author Frost
  */
-public class WaitForThread extends Thread implements Runnable {
+public class InstallThread extends Thread implements Runnable {
 
     /**
      * Estado del hilo.
@@ -39,54 +41,63 @@ public class WaitForThread extends Thread implements Runnable {
     private final Device device;
 
     /**
-     * Proceso a ejecutar.
+     * Comando base de instalacion.
      */
-    private final Process process;
+    private final String baseCommand;
 
     /**
-     * Codigo a ejecutar al finalizar el proceso.
+     * Codigo a ejecutar al finalizar la instalacion.
      */
-    private final OnDeviceCallback callback;
+    private final OnInstallCallback callback;
+
+    /**
+     * Archivos a instalar.
+     */
+    private final File[] files;
 
     /**
      * Construye el hilo a partir de los valores especificados.
      *
      * @param console consola
      * @param device dispositivo
-     * @param process proceso
+     * @param baseCommand comando base de instalacion
+     * @param files archivos a instalar
      * @param callback codigo a ejecutar al finalizar
      */
-    public WaitForThread(Console console, Device device, Process process,
-            OnDeviceCallback callback) {
+    public InstallThread(Console console, Device device, String baseCommand,
+            File[] files, OnInstallCallback callback) {
         this.console = console;
         this.device = device;
-        this.process = process;
+        this.baseCommand = baseCommand;
+        this.files = files;
         this.callback = callback;
     }
 
-    /**
-     * Detiene la ejecucion del hilo.
-     */
-    public void stopWait() {
+    public void stopInstall() {
         alive = false;
     }
 
     @Override
     public void run() {
-        while (process.isAlive()) {
+        int success = 0;
+        for (File file : files) {
             if (!alive) {
-                process.destroy();
+                break;
+            }
+
+            String command = String.format("%s %s",
+                    baseCommand, file.getAbsolutePath());
+            AdbResult result = console.execute(command);
+
+            if (result.success) {
+                success++;
             }
         }
 
-        console.stopWait(device);
-
-        Device updatedDevice = console.update(device);
-        boolean connected = null != updatedDevice;
+        console.cancel(device);
 
         if (null != callback) {
-            callback.onDevice(
-                    null == updatedDevice ? device : updatedDevice, connected);
+            callback.onInstall(device, files, success == files.length);
         }
     }
 

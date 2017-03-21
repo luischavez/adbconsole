@@ -30,10 +30,10 @@ public interface OnInstallCallback {
      * Se ejecuta al terminal la instalacion del <b>archivo</b>
      * en el <b>dispositivo</b>.
      *
-     * @param device dispositivo
-     * @param file archivo a instalar
-     * @param success estado de la instalacion
+     * @param targetDevice dispositivo
+     * @param files archivos a instalar
+     * @param success resultado de la instalacion
      */
-    public void onInstall(Device device, File file, boolean success);
+    public void onInstall(Device targetDevice, File[] files, boolean success);
 
 }

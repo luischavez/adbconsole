@@ -41,6 +41,15 @@ public interface Console {
     public void removeListener(ConsoleListener listener);
 
     /**
+     * Ejecuta un comando generico de adb.
+     *
+     * @param command comando a ejecutar
+     * @return resultado del comando
+     * @throws AdbException
+     */
+    public AdbResult execute(String command) throws AdbException;
+
+    /**
      * Listado de <b>dispositivos</b> conectados.
      *
      * @return dispositivos conectados
@@ -97,14 +106,38 @@ public interface Console {
      * Instala un archivo en el dispositivo.
      *
      * @param device dispositivo
-     * @param file archivo a instalar
+     * @param files archivos a instalar
      * @param force sobreescribe el archivo en caso de que exista
      * @param callback codigo a ejecutar al finalizar la instalacion o null
      * @throws AdbException
      * @throws UnauthorizedDeviceException si el dispositivo no fue aceptado
      */
-    public void install(Device device, File file, boolean force,
+    public void install(Device device, File[] files, boolean force,
             OnInstallCallback callback)
             throws AdbException, UnauthorizedDeviceException;
+
+    /**
+     * Cancela la instalacion de archivos en el dispositivo.
+     *
+     * @param device dispositivo
+     * @throws AdbException
+     */
+    public void cancel(Device device) throws AdbException;
+
+    /**
+     * Verifica si se estan instalando archivos en el dispositivo.
+     *
+     * @param device dispositivo
+     * @return <b>true</b> si esta instalando, <b>false</b> si no
+     * @throws AdbException
+     */
+    public boolean isInstalling(Device device) throws AdbException;
+
+    /**
+     * Mata el proceso de adb.
+     *
+     * @throws AdbException
+     */
+    public void kill() throws AdbException;
 
 }

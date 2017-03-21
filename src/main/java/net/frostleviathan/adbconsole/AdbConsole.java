@@ -76,6 +76,12 @@ public class AdbConsole implements Console {
             = Collections.synchronizedMap(new HashMap<>());
 
     /**
+     * Hilos de instalacion.
+     */
+    private final Map<String, InstallThread> installing
+            = Collections.synchronizedMap(new HashMap<>());
+
+    /**
      * Construye la consola a partir de una cadena con la ubicacion de los
      * binarios de adb.
      *
@@ -114,31 +120,31 @@ public class AdbConsole implements Console {
      * @return entrada generada
      * @throws IOException
      */
-    protected String writeToOutput(InputStream in, OutputStream out)
+    protected String writeTo(InputStream in, OutputStream out)
             throws IOException {
         StringBuilder builder = new StringBuilder();
 
         try (BufferedReader reader
                 = new BufferedReader(new InputStreamReader(in))) {
 
+            BufferedWriter writer = null;
             if (null != out) {
-                BufferedWriter writer
-                        = new BufferedWriter(new OutputStreamWriter(out));
+                writer = new BufferedWriter(new OutputStreamWriter(out));
 
-                String line;
-                while (null != (line = reader.readLine())) {
-                    builder.append(line).append(System.lineSeparator());
+            }
 
+            String line;
+            while (null != (line = reader.readLine())) {
+                builder.append(line).append(System.lineSeparator());
+
+                if (null != writer) {
                     writer.append(line);
                     writer.newLine();
                 }
+            }
 
+            if (null != writer) {
                 writer.flush();
-            } else {
-                String line;
-                while (null != (line = reader.readLine())) {
-                    builder.append(line).append(System.lineSeparator());
-                }
             }
         }
 
@@ -166,45 +172,14 @@ public class AdbConsole implements Console {
     }
 
     /**
-     * Ejecuta un comando y regresa el codigo de retorno.
-     *
-     * @param command comando a ejecutar
-     * @param builder donde guardar la salida
-     * @return codigo de retorno
-     * @throws AdbException
-     */
-    protected int execute(String command, StringBuilder builder)
-            throws AdbException {
-        Process process = createProcess(command);
-
-        try {
-            String output
-                    = writeToOutput(process.getInputStream(), outputStream);
-            builder.append(output).append(System.lineSeparator());
-
-            String err
-                    = writeToOutput(process.getErrorStream(), errorStream);
-            builder.append(err).append(System.lineSeparator());
-        } catch (IOException ex) {
-            throw new AdbException("Error writing output", ex);
-        }
-
-        int exitValue = process.exitValue();
-        process.destroy();
-
-        return exitValue;
-    }
-
-    /**
      * Obtiene un listado de dispositivos conectados.
      *
      * @return dispositivos conectados
      */
     protected List<Device> readDevices() {
-        StringBuilder builder = new StringBuilder();
-        execute("adb devices -l", builder);
+        AdbResult result = execute("adb devices -l");
 
-        String output = builder.toString();
+        String output = result.output;
         output = output.replace("List of devices attached", "").trim();
 
         Pattern devicePattern = Pattern.compile("([a-zA-Z0-9]+)[\\s]+(.+)");
@@ -281,6 +256,29 @@ public class AdbConsole implements Console {
     }
 
     @Override
+    public AdbResult execute(String command) throws AdbException {
+        Process process = createProcess(command);
+
+        StringBuilder builder = new StringBuilder();
+        try {
+            String output
+                    = writeTo(process.getInputStream(), outputStream);
+            builder.append(output).append(System.lineSeparator());
+
+            String err
+                    = writeTo(process.getErrorStream(), errorStream);
+            builder.append(err).append(System.lineSeparator());
+        } catch (IOException ex) {
+            throw new AdbException("Error writing output", ex);
+        }
+
+        int exitValue = process.exitValue();
+        process.destroy();
+
+        return new AdbResult(0 == exitValue, builder.toString());
+    }
+
+    @Override
     public List<Device> devices() throws AdbException {
         List<Device> connectedDevices = readDevices();
 
@@ -321,6 +319,10 @@ public class AdbConsole implements Console {
     @Override
     public void waitFor(Device device, OnDeviceCallback callback)
             throws AdbException {
+        if (waiting.containsKey(device.deviceId())) {
+            return;
+        }
+
         String command
                 = String.format("adb -s %s wait-for-usb-device",
                         device.deviceId());
@@ -328,11 +330,12 @@ public class AdbConsole implements Console {
 
         WaitForThread thread
                 = new WaitForThread(this, device, process, callback);
-        thread.start();
 
         synchronized (waiting) {
             waiting.put(device.deviceId(), thread);
         }
+
+        thread.start();
     }
 
     @Override
@@ -363,7 +366,7 @@ public class AdbConsole implements Console {
     }
 
     @Override
-    public void install(Device device, File file, boolean force,
+    public void install(Device device, File[] files, boolean force,
             OnInstallCallback callback)
             throws AdbException, UnauthorizedDeviceException {
         Device updatedDevice = update(device);
@@ -373,20 +376,54 @@ public class AdbConsole implements Console {
                     String.format("unauthorized device %s", device.deviceId()));
         }
 
-        if (!file.exists()) {
-            throw new AdbException(
-                    String.format("%s not exists", file.getAbsolutePath()));
+        if (0 == files.length) {
+            throw new AdbException("select files to install");
         }
 
-        String command = String.format("adb -s %s install %s %s",
-                device.deviceId(), force ? "-r" : "", file.getAbsolutePath());
-
-        StringBuilder builder = new StringBuilder();
-        int code = execute(command, builder);
-
-        if (null != callback) {
-            callback.onInstall(device, file, 0 == code);
+        for (File file : files) {
+            if (!file.exists()) {
+                throw new AdbException(
+                        String.format("%s not exists", file.getAbsolutePath()));
+            }
         }
+
+        String baseCommand = String.format("adb -s %s install %s",
+                device.deviceId(), force ? "-r" : "");
+
+        InstallThread thread
+                = new InstallThread(this, device, baseCommand, files, callback);
+
+        synchronized (installing) {
+            installing.put(device.deviceId(), thread);
+        }
+
+        thread.start();
+
+    }
+
+    @Override
+    public void cancel(Device device) throws AdbException {
+        synchronized (installing) {
+            InstallThread thread = installing.get(device.deviceId());
+
+            if (null != thread) {
+                thread.stopInstall();
+            }
+
+            installing.remove(device.deviceId());
+        }
+    }
+
+    @Override
+    public boolean isInstalling(Device device) throws AdbException {
+        synchronized (installing) {
+            return installing.containsKey(device.deviceId());
+        }
+    }
+
+    @Override
+    public void kill() throws AdbException {
+        execute("adb kill-server");
     }
 
 }

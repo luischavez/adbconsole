@@ -17,20 +17,30 @@
 package net.frostleviathan.adbconsole;
 
 /**
- * Se encarga de manejar la conexion con el dispositivo cuando se conecta y es
- * aprobado por el usuario.
  *
  * @author Frost
  */
-@FunctionalInterface
-public interface OnDeviceCallback {
+public class AdbResult {
 
     /**
-     * Metodo a ejecutar cuando se acepta la conexion.
-     *
-     * @param connectedDevice dispositivo conectado
-     * @param connected indica si el dipositivo esta conectado
+     * Indica si el comando se ejecuto correctamente.
      */
-    public void onDevice(Device connectedDevice, boolean connected);
+    public final boolean success;
+
+    /**
+     * Salida del comando.
+     */
+    public final String output;
+
+    /**
+     * Constructor por defecto.
+     *
+     * @param success indica si se ejecuto correctamente el comando
+     * @param output salida del comando
+     */
+    public AdbResult(boolean success, String output) {
+        this.success = success;
+        this.output = output;
+    }
 
 }

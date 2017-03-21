@@ -25,14 +25,27 @@ import java.util.List;
  */
 public class Main {
 
-    public static void main(String... args) {
-        AdbInstaller installer = new AdbInstaller();
-        installer.detectOsAndInstallAdb(System.getProperty("user.dir"));
-        
-        AdbConsole console = new AdbConsole("C:/Users/Frost/Downloads/apks/platform-tools/");
+    /**
+     * Obtiene los archivos apk del directorio especificado.
+     *
+     * @param path directorio
+     * @return archivos encontrados
+     */
+    public static File[] apkList(String path) {
+        File currentDirectory = new File(System.getProperty("user.dir"));
 
-        console.setOutputStream(System.out);
-        console.setErrorStream(System.err);
+        return currentDirectory.listFiles((File dir, String name) -> {
+            return name.endsWith(".apk");
+        });
+    }
+
+    public static void main(String... args) {
+        String workingDir = System.getProperty("user.dir");
+
+        AdbInstaller installer = new AdbInstaller();
+        String adbPath = installer.detectOsAndInstallAdb(workingDir);
+
+        AdbConsole console = new AdbConsole(adbPath);
 
         List<Device> devices = console.devices();
         devices.forEach((device) -> {
@@ -41,16 +54,21 @@ public class Main {
         });
 
         if (!devices.isEmpty()) {
-            Device connectedDevice = devices.get(0);
+            Device device = devices.get(0);
 
-            console.waitFor(connectedDevice, (device, connected) -> {
+            console.waitFor(device, (connectedDevice, connected) -> {
                 System.out.printf("%s= %b" + System.lineSeparator(),
-                        device.deviceId(), connected);
+                        connectedDevice.deviceId(), connected);
+
+                File[] apks = apkList(workingDir);
+
+                console.install(connectedDevice, apks, true,
+                        (targetDevice, files, success) -> {
+                            System.out.printf("%s= installed %b" + System.lineSeparator(),
+                                    targetDevice.deviceId(), success);
+                        });
+                console.cancel(connectedDevice);
             });
-
-            File apk = new File("C:/Users/Frost/Downloads/apks/com.billpocket.billpocket_3.4.8.apk");
-
-            console.install(connectedDevice, apk, true, null);
         }
     }
 

@@ -89,8 +89,9 @@ public class AdbInstaller {
      * Detecta el sistema operativo e instala los archivos de adb indicados.
      *
      * @param destDir directorio donde instalar adb
+     * @return directorio donde se instalo adb
      */
-    public void detectOsAndInstallAdb(String destDir) {
+    public String detectOsAndInstallAdb(String destDir) {
         String resource = UNX_BIN;
         if (SystemUtils.IS_OS_WINDOWS) {
             resource = WIN_BIN;
@@ -99,6 +100,8 @@ public class AdbInstaller {
         }
 
         unpack(resource, destDir);
+
+        return destDir + File.separator + "platform-tools";
     }
 
 }
