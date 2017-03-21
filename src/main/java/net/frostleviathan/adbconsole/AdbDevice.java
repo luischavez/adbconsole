@@ -16,6 +16,8 @@
  */
 package net.frostleviathan.adbconsole;
 
+import java.util.Objects;
+
 /**
  * Implementacion base de los dispositivos de adb.
  *
@@ -57,6 +59,28 @@ public class AdbDevice implements Device {
     @Override
     public boolean isAuthorized() {
         return authorized;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (null == obj) {
+            return false;
+        }
+
+        if (!AdbDevice.class.isAssignableFrom(obj.getClass())) {
+            return false;
+        }
+
+        AdbDevice otherDevice = AdbDevice.class.cast(obj);
+
+        return deviceId.equals(otherDevice.deviceId);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 97 * hash + Objects.hashCode(this.deviceId);
+        return hash;
     }
 
 }

@@ -134,6 +134,13 @@ public interface Console {
     public boolean isInstalling(Device device) throws AdbException;
 
     /**
+     * Inicia el proceso de adb.
+     *
+     * @throws AdbException
+     */
+    public void init() throws AdbException;
+
+    /**
      * Mata el proceso de adb.
      *
      * @throws AdbException

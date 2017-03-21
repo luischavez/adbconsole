@@ -422,6 +422,11 @@ public class AdbConsole implements Console {
     }
 
     @Override
+    public void init() throws AdbException {
+        execute("adb start-server");
+    }
+
+    @Override
     public void kill() throws AdbException {
         execute("adb kill-server");
     }
