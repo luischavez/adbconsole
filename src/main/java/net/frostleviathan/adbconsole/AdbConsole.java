@@ -189,6 +189,11 @@ public class AdbConsole implements Console {
 
         while (deviceMatcher.find()) {
             String deviceId = deviceMatcher.group(1);
+
+            if ("*".equals(deviceId)) {
+                continue;
+            }
+
             String status = deviceMatcher.group(2);
             String model = "unknow";
             boolean authorized = !"unauthorized".equals(status);
