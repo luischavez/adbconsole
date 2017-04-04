@@ -196,7 +196,7 @@ public class AdbConsole implements Console {
 
             String status = deviceMatcher.group(2);
             String model = "unknow";
-            boolean authorized = status.contains("unauthorized");
+            boolean authorized = !status.contains("unauthorized");
 
             Matcher statusMatcher = statusPattern.matcher(status);
             if (statusMatcher.find()) {
