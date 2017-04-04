@@ -272,9 +272,17 @@ public class AdbConsole implements Console {
         } catch (IOException ex) {
             throw new AdbException("Error writing output", ex);
         }
-
-        int exitValue = process.exitValue();
-        process.destroy();
+        
+        int exitValue = 1;
+        try {
+            exitValue = process.waitFor();
+        } catch (InterruptedException ex) {
+            // Suppress exception.
+        }
+        
+        if (process.isAlive()) {
+            process.destroy();
+        }
 
         return new AdbResult(0 == exitValue, builder.toString());
     }
@@ -361,6 +369,10 @@ public class AdbConsole implements Console {
             OnInstallCallback callback)
             throws AdbException, UnauthorizedDeviceException {
         Device updatedDevice = update(device);
+        
+        if (null == updatedDevice) {
+            return;
+        }
 
         if (!updatedDevice.isAuthorized()) {
             throw new UnauthorizedDeviceException(
