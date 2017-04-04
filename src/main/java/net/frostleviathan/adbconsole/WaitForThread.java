@@ -73,16 +73,18 @@ public class WaitForThread extends Thread implements Runnable {
 
     @Override
     public void run() {
+        Device updatedDevice = null;
+        boolean connected = true;
         while (process.isAlive()) {
-            if (!alive) {
+            updatedDevice = console.update(device);
+            connected = null != updatedDevice;
+
+            if (!alive || !connected) {
                 process.destroy();
             }
         }
 
         console.stopWait(device);
-
-        Device updatedDevice = console.update(device);
-        boolean connected = null != updatedDevice;
 
         if (null != callback) {
             callback.onDevice(

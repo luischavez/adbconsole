@@ -89,6 +89,10 @@ public class InstallThread extends Thread implements Runnable {
                     baseCommand, file.getAbsolutePath());
             AdbResult result = console.execute(command);
 
+            if (result.output.contains("Failed")) {
+                break;
+            }
+
             if (result.success) {
                 success++;
             }
