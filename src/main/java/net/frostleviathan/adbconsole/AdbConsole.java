@@ -465,19 +465,8 @@ public class AdbConsole implements Console {
 
     @Override
     public void kill() throws AdbException {
-        Set<Map.Entry<String, WaitForThread>> entrySet = waiting.entrySet();
-        Iterator<Map.Entry<String, WaitForThread>> iterator
-                = entrySet.iterator();
-
-        while (iterator.hasNext()) {
-            Map.Entry<String, WaitForThread> entry = iterator.next();
-            String deviceId = entry.getKey();
-            WaitForThread thread = entry.getValue();
-
-            if (!thread.isAlive()) {
-                waiting.remove(deviceId);
-            }
-        }
+        destroyWaitForThreads();
+        destroyInstallThreads();
 
         execute("adb kill-server");
     }
