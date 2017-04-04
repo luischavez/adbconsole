@@ -229,6 +229,46 @@ public class AdbConsole implements Console {
     }
 
     /**
+     * Detiene todos los hilos pendientes.
+     */
+    protected void destroyWaitForThreads() {
+        Set<Map.Entry<String, WaitForThread>> entrySet = waiting.entrySet();
+        Iterator<Map.Entry<String, WaitForThread>> iterator
+                = entrySet.iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<String, WaitForThread> entry = iterator.next();
+            String deviceId = entry.getKey();
+            WaitForThread thread = entry.getValue();
+
+            if (thread.isAlive()) {
+                thread.stopWait();
+                waiting.remove(deviceId);
+            }
+        }
+    }
+
+    /**
+     * Detiene todos los hilos pendientes.
+     */
+    protected void destroyInstallThreads() {
+        Set<Map.Entry<String, InstallThread>> entrySet = installing.entrySet();
+        Iterator<Map.Entry<String, InstallThread>> iterator
+                = entrySet.iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<String, InstallThread> entry = iterator.next();
+            String deviceId = entry.getKey();
+            InstallThread thread = entry.getValue();
+
+            if (thread.isAlive()) {
+                thread.stopInstall();
+                installing.remove(deviceId);
+            }
+        }
+    }
+
+    /**
      * Establece el canal donde se escribira la salida de los comandos.
      *
      * @param outputStream canal
@@ -272,14 +312,14 @@ public class AdbConsole implements Console {
         } catch (IOException ex) {
             throw new AdbException("Error writing output", ex);
         }
-        
+
         int exitValue = 1;
         try {
             exitValue = process.waitFor();
         } catch (InterruptedException ex) {
             // Suppress exception.
         }
-        
+
         if (process.isAlive()) {
             process.destroy();
         }
@@ -369,7 +409,7 @@ public class AdbConsole implements Console {
             OnInstallCallback callback)
             throws AdbException, UnauthorizedDeviceException {
         Device updatedDevice = update(device);
-        
+
         if (null == updatedDevice) {
             return;
         }
@@ -425,6 +465,20 @@ public class AdbConsole implements Console {
 
     @Override
     public void kill() throws AdbException {
+        Set<Map.Entry<String, WaitForThread>> entrySet = waiting.entrySet();
+        Iterator<Map.Entry<String, WaitForThread>> iterator
+                = entrySet.iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<String, WaitForThread> entry = iterator.next();
+            String deviceId = entry.getKey();
+            WaitForThread thread = entry.getValue();
+
+            if (!thread.isAlive()) {
+                waiting.remove(deviceId);
+            }
+        }
+
         execute("adb kill-server");
     }
 
