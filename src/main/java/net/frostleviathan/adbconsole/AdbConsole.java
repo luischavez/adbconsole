@@ -190,7 +190,7 @@ public class AdbConsole implements Console {
         while (deviceMatcher.find()) {
             String deviceId = deviceMatcher.group(1);
 
-            if ("*".equals(deviceId)) {
+            if (deviceId.contains("*")) {
                 continue;
             }
 
