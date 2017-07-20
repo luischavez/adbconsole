@@ -17,6 +17,7 @@
 package net.frostleviathan.adbconsole;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * Hilo que realiza la instalacion de archivos en el dispositivo.
@@ -48,7 +49,12 @@ public class InstallThread extends Thread implements Runnable {
     /**
      * Codigo a ejecutar al finalizar la instalacion.
      */
-    private final OnInstallCallback callback;
+    private final OnInstallCallback installCallback;
+
+    /**
+     * Codigo a ejecutar cuando se actualize la instalacion.
+     */
+    private final OnInstallingCallback installingCallback;
 
     /**
      * Archivos a instalar.
@@ -62,15 +68,18 @@ public class InstallThread extends Thread implements Runnable {
      * @param device dispositivo
      * @param baseCommand comando base de instalacion
      * @param files archivos a instalar
-     * @param callback codigo a ejecutar al finalizar
+     * @param installCallback codigo a ejecutar al finalizar
      */
     public InstallThread(Console console, Device device, String baseCommand,
-            File[] files, OnInstallCallback callback) {
+            File[] files,
+            OnInstallCallback installCallback,
+            OnInstallingCallback installingCallback) {
         this.console = console;
         this.device = device;
         this.baseCommand = baseCommand;
         this.files = files;
-        this.callback = callback;
+        this.installCallback = installCallback;
+        this.installingCallback = installingCallback;
     }
 
     public void stopInstall() {
@@ -79,29 +88,46 @@ public class InstallThread extends Thread implements Runnable {
 
     @Override
     public void run() {
-        int success = 0;
-        for (File file : files) {
+        for (int current = 0; current < files.length; current++) {
+            File file = files[current];
+
             if (!alive) {
                 break;
             }
 
-            String command = String.format("%s %s",
-                    baseCommand, file.getAbsolutePath());
-            AdbResult result = console.execute(command);
+            installingCallback.onInstalling(device, file,
+                    current + 1, files.length);
 
-            if (result.output.contains("Failed")) {
-                break;
+            String fileName = file.getName().replace(".apk", "");
+            List<String> installedApps = console.listInstalledApps(device);
+
+            if (installedApps.contains(fileName)) {
+                continue;
             }
 
-            if (result.success) {
-                success++;
-            }
+            AdbResult result;
+            do {
+                String command = String.format("%s %s",
+                        baseCommand, file.getAbsolutePath());
+                result = console.execute(command);
+            } while (result == null
+                    || !result.success
+                    || result.output.contains("Failed"));
         }
 
         console.cancel(device);
 
-        if (null != callback) {
-            callback.onInstall(device, files, success == files.length);
+        int installed = 0;
+        List<String> installedApps = console.listInstalledApps(device);
+        for (File file : files) {
+            String fileName = file.getName().replace(".apk", "");
+            if (installedApps.contains(fileName)) {
+                installed++;
+            }
+        }
+
+        if (null != installCallback) {
+            installCallback.onInstall(device, files, installed == files.length);
         }
     }
 

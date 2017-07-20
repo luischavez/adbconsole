@@ -405,8 +405,46 @@ public class AdbConsole implements Console {
     }
 
     @Override
+    public List<String> listInstalledApps(Device device) throws AdbException {
+        Device updatedDevice = update(device);
+
+        ArrayList<String> installedApps = new ArrayList<>();
+
+        if (null == updatedDevice) {
+            return installedApps;
+        }
+
+        if (!updatedDevice.isAuthorized()) {
+            throw new UnauthorizedDeviceException(
+                    String.format("unauthorized device %s", device.deviceId()));
+        }
+
+        AdbResult result
+                = execute(String.format("adb -s %s shell pm list packages",
+                        device.deviceId()));
+
+        if (result.success) {
+            String[] packages = result.output.split("\n");
+            for (String p : packages) {
+                p = p.trim();
+
+                if (p.isEmpty()) {
+                    continue;
+                }
+
+                p = p.replace("package:", "");
+
+                installedApps.add(p);
+            }
+        }
+
+        return installedApps;
+    }
+
+    @Override
     public void install(Device device, File[] files, boolean force,
-            OnInstallCallback callback)
+            OnInstallCallback installCallback,
+            OnInstallingCallback installingCallback)
             throws AdbException, UnauthorizedDeviceException {
         Device updatedDevice = update(device);
 
@@ -434,12 +472,12 @@ public class AdbConsole implements Console {
                 device.deviceId(), force ? "-r" : "");
 
         InstallThread thread
-                = new InstallThread(this, device, baseCommand, files, callback);
+                = new InstallThread(this, device, baseCommand, files,
+                        installCallback, installingCallback);
 
         installing.put(device.deviceId(), thread);
 
         thread.start();
-
     }
 
     @Override

@@ -103,17 +103,28 @@ public interface Console {
     public boolean isAuthorized(Device device) throws AdbException;
 
     /**
+     * Obtiene la lista de aplicaciones instaladas en el dispositivo.
+     *
+     * @param device dispositivo
+     * @return lista de aplicaciones instaladas
+     * @throws AdbException
+     */
+    public List<String> listInstalledApps(Device device) throws AdbException;
+
+    /**
      * Instala un archivo en el dispositivo.
      *
      * @param device dispositivo
      * @param files archivos a instalar
      * @param force sobreescribe el archivo en caso de que exista
-     * @param callback codigo a ejecutar al finalizar la instalacion o null
+     * @param installCallback codigo a ejecutar al finalizar la instalacion o null
+     * @param installingCallback codigo a ejecutar al actualizar la instalacion o null
      * @throws AdbException
      * @throws UnauthorizedDeviceException si el dispositivo no fue aceptado
      */
     public void install(Device device, File[] files, boolean force,
-            OnInstallCallback callback)
+            OnInstallCallback installCallback,
+            OnInstallingCallback installingCallback)
             throws AdbException, UnauthorizedDeviceException;
 
     /**

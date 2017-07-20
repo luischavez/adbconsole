@@ -19,21 +19,19 @@ package net.frostleviathan.adbconsole;
 import java.io.File;
 
 /**
- * Se ejecuta al finalizar la instalacion de archivos en el dispositivo.
  *
  * @author Frost
  */
 @FunctionalInterface
-public interface OnInstallCallback {
+public interface OnInstallingCallback {
 
     /**
-     * Se ejecuta al terminal la instalacion de los <b>archivos</b>
-     * en el <b>dispositivo</b>.
+     * Muestra el estado actual de la instalacion en el dispositivo.
      *
      * @param targetDevice dispositivo
-     * @param files archivos a instalar
-     * @param success resultado de la instalacion
+     * @param file instalacion actual
+     * @param installed aplicaciones instaladas
+     * @param total total de aplicaciones
      */
-    public void onInstall(Device targetDevice, File[] files, boolean success);
-
+    public void onInstalling(Device targetDevice, File file, int installed, int total);
 }
